@@ -1,118 +1,90 @@
-/*
- * UART.c
- *
- *  Created on: Sep 22, 2019
- *      Author: kingd
- */
 
 #include "UART.h"
 
-/******************************************************************************
- *                         The UART1 initialization.                           *
- *******************************************************************************/
-void UARTInit0 (void)
+volatile uint8_t TimeState = END_TIME;
+
+#if TIVA_TYPE == TIVA1
+volatile uint32_t speed=0;
+
+#elif TIVA_TYPE == TIVA2
+volatile uint32_t Distance=0;
+volatile uint32_t OldSpeed=0;
+volatile uint32_t RecentSpeed=0;
+volatile uint32_t OldTime=0;
+volatile uint32_t RecentTime=0;
+#endif
+
+void vUART_Init(void)
 {
-    // Set GPIO A0 and A1 as UART pins.
-    GPIOPinConfigure(GPIO_PA0_U0RX);
-    GPIOPinConfigure(GPIO_PA1_U0TX);
+    /*
+     *
+     */
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOA));
     GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+    UARTStdioConfig(0, 115200, SysCtlClockGet());
+    /*
+     *
+     */
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOC);
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOC));
+    GPIOPinTypeUART(GPIO_PORTC_BASE, GPIO_PIN_6 | GPIO_PIN_7);
+    GPIOPinConfigure(GPIO_PC6_U3RX);
+    GPIOPinConfigure(GPIO_PC7_U3TX);
 
-    // Configure the UART for 115,200, 8-N-1 operation.
-    UARTConfigSetExpClk(UART0_BASE, SysCtlClockGet(), 115200,
-                        (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE));
-}
-/*******************************************************************************/
-
-/******************************************************************************
- *                         The UART1 initialization.                           *
- *******************************************************************************/
-void UARTInit1 (void)
-{
-    // Set GPIO A0 and A1 as UART pins.
-    GPIOPinConfigure(GPIO_PB0_U1RX);
-    GPIOPinConfigure(GPIO_PB1_U1TX);
-    GPIOPinTypeUART(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1);
-
-    // Configure the UART for 115,200, 8-N-1 operation.
-    UARTConfigSetExpClk(UART1_BASE, SysCtlClockGet(), 115200,
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_UART3);
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_UART3));
+    UARTConfigSetExpClk(UART3_BASE, SysCtlClockGet(), 9600,
                         (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE));
 
-    // Enable the UART interrupt.
-    IntEnable(INT_UART1);
-    UARTIntEnable(UART1_BASE, UART_INT_RX | UART_INT_RT);
+    UARTFIFOLevelSet(UART3_BASE, UART_FIFO_TX1_8, UART_FIFO_RX1_8);
+    UARTIntRegister(UART3_BASE, vUART_UART3Handler);
+    UARTIntEnable(UART3_BASE, UART_INT_RX | UART_INT_RT);
 }
-/*******************************************************************************/
 
-/******************************************************************************
- *                        The UART0 interrupt handler.                          *
- *******************************************************************************/
-void UARTIntHandler (void)
+/*For tiva 1*/
+#if TIVA_TYPE == TIVA1
+void vUART_UART3Handler(void)
 {
-    uint32_t ui32Status;
-
-    // Get the interrupt status.
-    ui32Status = UARTIntStatus(UART0_BASE, true);
-
-    // Clear the asserted interrupts.
-    UARTIntClear(UART0_BASE, ui32Status);
-
-
-    // Loop while there are characters in the receive FIFO.
-    while(UARTCharsAvail(UART0_BASE))
+    static uint8_t Startcheck = START_TIME;
+    if((Startcheck == START_TIME) && (UARTCharGet (UART3_BASE ) == START_TIME))
     {
-        // Read the next character from the UART and write it back to the UART.
-        UARTCharPutNonBlocking(UART0_BASE,UARTCharGetNonBlocking(UART0_BASE));
+        UARTCharPut(UART3_BASE, time);
+        UARTCharPut(UART3_BASE, speed);
+        Startcheck = END_TIME;
+        TimeState = START_TIME;
 
-        // Blink the LED to show a character transfer is occuring.
-        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, GPIO_PIN_2);
-
-        // Delay for 1 millisecond.  Each SysCtlDelay is about 3 clocks.
-        SysCtlDelay(SysCtlClockGet() / (1000 * 3));
-
-        // Turn off the LED
-        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, 0);
+    }
+    else if((Startcheck == END_TIME) && (UARTCharGet (UART3_BASE ) == END_TIME))
+    {
+        UARTCharPut(UART3_BASE, time);
+        UARTCharPut(UART3_BASE, speed);
+        Startcheck = START_TIME;
+        TimeState = END_TIME;
     }
 }
-/*******************************************************************************/
-
-/******************************************************************************
- *                        The UART1 interrupt handler.                          *
- *******************************************************************************/
-void UARTIntHandler1 (void)
+#elif TIVA_TYPE == TIVA2
+/*for tiva 2*/
+void vUART_UART3Handler(void)
 {
-    uint32_t ui32Status;
-
-    // Get the interrrupt status.
-    ui32Status = UARTIntStatus(UART1_BASE, true);
-
-    // Clear the asserted interrupts.
-    UARTIntClear(UART1_BASE, ui32Status);
-
-    // Loop while there are characters in the receive FIFO.
-    while(UARTCharGet(UART1_BASE) == 0x08)
+    if(TimeState == END_TIME)
     {
-        // Blink the LED to show a character transfer is occuring.
-        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, GPIO_PIN_2);
-
-        // Delay for 1 millisecond.  Each SysCtlDelay is about 3 clocks.
-        SysCtlDelay(SysCtlClockGet() / 10 / 3);
-
-        // Turn off the LED
-        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, 0);
+        OldTime = UARTCharGet (UART3_BASE );
+        OldSpeed = UARTCharGet (UART3_BASE );
+        UARTprintf("Start Time to Measure: %d\n", OldTime);
+        UARTprintf("Start Speed to Measure: %d\n", OldSpeed);
+    }
+    else if(TimeState == START_TIME)
+    {
+        RecentTime = UARTCharGet (UART3_BASE);
+        RecentSpeed = UARTCharGet (UART3_BASE );
+        Distance += ((RecentTime-OldTime)*OldSpeed);
+        OldSpeed = RecentSpeed;
+        OldTime = RecentTime;
+        UARTprintf("Speed was changed to: %d\n", RecentSpeed);
+        UARTprintf("Distance till now: %d\n", Distance);
     }
 }
-/*******************************************************************************/
+#endif
 
-/******************************************************************************
- *                        Send a string to the UART.                           *
- *******************************************************************************/
-void UARTSend (const uint8_t *pui8Buffer, uint32_t ui32Count)
-{
-    // Loop while there are more characters to send.
-    while(ui32Count--)
-    {
-        // Write the next character to the UART.
-        UARTCharPutNonBlocking(UART0_BASE, *pui8Buffer++);
-    }
-}
-/*******************************************************************************/
+

@@ -1,64 +1,35 @@
-/*
- * UART.h
- *
- *  Created on: Sep 22, 2019
- *      Author: kingd
- */
 
 #ifndef UART_H_
 #define UART_H_
 
-#include <stdint.h>
-#include <stdbool.h>
+#include "common_header.h"
 
-#include "driverlib/sysctl.h"
-#include "driverlib/debug.h"
+#define START_TIME 10
+#define END_TIME 20
 
-#include "inc/hw_types.h"
-#include "inc/hw_memmap.h"
-#include "driverlib/pin_map.h"
+#define TIVA1 1
+#define TIVA2 2
+#define TIVA_TYPE TIVA1
 
-#include "inc/hw_gpio.h"
-#include "driverlib/gpio.h"
+extern volatile uint8_t TimeState;
 
-#include "inc/hw_timer.h"
-#include "driverlib/timer.h"
+#if TIVA_TYPE == TIVA1
 
-#include "inc/hw_uart.h"
-#include "driverlib/uart.h"
-#include "utils/uartstdio.h"
+extern volatile uint32_t time;
+extern volatile uint32_t speed;
 
-#include "inc/hw_ints.h"
-#include "driverlib/interrupt.h"
 
-/******************************************************************************
- *                         The UART1 initialization.                           *
- *******************************************************************************/
-extern void UARTInit0 (void);
-/*******************************************************************************/
+#elif TIVA_TYPE == TIVA2
+extern volatile uint32_t Distance;
+extern volatile uint32_t OldSpeed;
+extern volatile uint32_t RecentSpeed;
+extern volatile uint32_t OldTime;
+extern volatile uint32_t RecentTime;
+#endif
 
-/******************************************************************************
- *                         The UART1 initialization.                           *
- *******************************************************************************/
-extern void UARTInit1 (void);
-/*******************************************************************************/
 
-/******************************************************************************
- *                        The UART0 interrupt handler.                          *
- *******************************************************************************/
-//extern void UARTIntHandler (void);
-/*******************************************************************************/
 
-/******************************************************************************
- *                        The UART1 interrupt handler.                          *
- *******************************************************************************/
-//extern void UARTIntHandler1 (void);
-/*******************************************************************************/
-
-/******************************************************************************
- *                        Send a string to the UART.                           *
- *******************************************************************************/
-void UARTSend (const uint8_t *pui8Buffer, uint32_t ui32Count);
-/*******************************************************************************/
+extern void vUART_Init(void);
+extern void vUART_UART3Handler(void);
 
 #endif /* UART_H_ */

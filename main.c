@@ -8,7 +8,8 @@
 /*******************************************************************************
  *                          Included Libraries                                 *
  *******************************************************************************/
-
+#include "timer.h"
+#include "button.h"
 #include "UART.h"
 
 
@@ -47,40 +48,11 @@ int main (void)
     // Enable processor interrupts.
     UARTInit1 ();
     UARTInit0 ();
+    Button_Init();
+        while(1)
+        {
+            Button_press();
+        }
 
-    // Prompt for text to be entered.
-    //UARTSend((uint8_t *)"Enter text: ", 12);
-    //GPIOPinWrite(GPIO_PORTF_BASE,GPIO_PIN_1,0XFF);
-    // Loop forever echoing data through the UART.
-    //UARTprintf("\nahmed\n");
-    while(1)
-    {
-//        if(GPIOPinRead(GPIO_PORTF_BASE,GPIO_PIN_0)!=0)
-//        {
-//            x++;
-//            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, 0xff);
-//            //UARTSend(x, 12);
-//            //UARTprintf("%d",x);
-//        }
-//        else
-//        {
-//            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2,0);
-//        }
-//        if(GPIOPinRead(GPIO_PORTF_BASE,GPIO_PIN_4)!=0)
-//        {
-//            x--;
-//            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 0xff);
-//            //  UARTprintf("%d",x);
-//        }
-//        else
-//        {
-//            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1,0);
-//        }
-        //UARTCharPut(UART1_BASE,0x08);
-
-        // Delay for 1 millisecond.  Each SysCtlDelay is about 3 clocks.
-        SysCtlDelay(SysCtlClockGet() / 10 / 3);
-
-    }
 }
 /*******************************************************************************/
